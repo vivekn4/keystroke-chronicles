@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Keystroke Chronicles — a story-driven typing RPG · VN</title>
+<style>
+  :root{
+    --gold:#f5c542; --ember:#ff7a2f; --arcane:#9b6bff; --parch:#e8dcc0;
+    --ink:#0b0a14; --panel:rgba(12,10,26,.92); --red:#ff4d5e; --green:#6fe08a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);
+    font-family:Georgia,'Times New Roman',serif;color:var(--parch);
+    user-select:none;-webkit-user-select:none}
+  #game{position:fixed;inset:0;display:block}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(5,4,12,.72);backdrop-filter:blur(3px);z-index:20}
+  .hidden{display:none !important}
+  .panel{background:var(--panel);border:1px solid rgba(245,197,66,.35);border-radius:12px;
+    padding:28px 34px;max-width:640px;width:92%;max-height:88vh;overflow-y:auto;
+    box-shadow:0 0 60px rgba(155,107,255,.25), inset 0 0 40px rgba(0,0,0,.6);text-align:center}
+  .panel h1{font-size:2.6em;letter-spacing:.12em;color:var(--gold);
+    text-shadow:0 0 24px rgba(245,197,66,.6);margin-bottom:6px}
+  .panel h2{font-size:1.6em;color:var(--gold);letter-spacing:.08em;margin-bottom:14px}
+  .panel p{line-height:1.65;margin:10px 0;font-size:1.02em}
+  .subtitle{color:var(--arcane);letter-spacing:.28em;font-size:.85em;margin-bottom:18px}
+  .btn{display:block;width:100%;margin:10px 0;padding:13px;font-family:inherit;font-size:1.08em;
+    letter-spacing:.06em;color:var(--parch);background:linear-gradient(180deg,#241d3f,#171231);
+    border:1px solid rgba(245,197,66,.5);border-radius:8px;cursor:pointer;transition:all .15s}
+  .btn:hover:not(:disabled){background:linear-gradient(180deg,#332757,#1e1840);
+    box-shadow:0 0 18px rgba(245,197,66,.45);transform:translateY(-1px)}
+  .btn:disabled{opacity:.35;cursor:default}
+  .btn.small{width:auto;display:inline-block;padding:8px 22px;margin:6px}
+  .vnmark{position:fixed;right:14px;bottom:10px;z-index:30;color:rgba(245,197,66,.55);
+    font-size:.8em;letter-spacing:.3em;pointer-events:none}
+  #dialogueBox{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;width:min(860px,94%);
+    z-index:20;background:var(--panel);border:1px solid rgba(245,197,66,.4);border-radius:10px;
+    padding:18px 22px;box-shadow:0 6px 40px rgba(0,0,0,.7)}
+  #dialogueName{color:var(--gold);letter-spacing:.1em;font-size:.85em;margin-bottom:8px}
+  #dialogueText{line-height:1.7;font-size:1.08em;min-height:3.2em;white-space:pre-wrap}
+  #dialogueHint{text-align:right;color:rgba(232,220,192,.5);font-size:.8em;margin-top:8px}
+  .cardrow{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .lvlcard{flex:1;min-width:150px;background:#171231;border:1px solid rgba(155,107,255,.5);
+    border-radius:8px;padding:16px 10px;cursor:pointer;transition:all .15s}
+  .lvlcard:hover{box-shadow:0 0 20px rgba(155,107,255,.6);transform:translateY(-2px)}
+  .lvlcard h3{color:var(--arcane);margin-bottom:8px;letter-spacing:.05em}
+  .lvlcard p{font-size:.88em;color:rgba(232,220,192,.8)}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0;text-align:left}
+  .statgrid div{background:#141026;padding:10px 14px;border-radius:6px;font-size:.95em}
+  .statgrid b{color:var(--gold)}
+  .settingrow{display:flex;justify-content:space-between;align-items:center;
+    margin:12px 0;font-size:1.02em}
+  .settingrow .opts button{margin-left:6px;padding:7px 14px;font-family:inherit;
+    background:#1c1638;color:var(--parch);border:1px solid rgba(245,197,66,.35);
+    border-radius:6px;cursor:pointer}
+  .settingrow .opts button.on{background:var(--gold);color:#171231;font-weight:bold}
+  kbd{background:#241d3f;border:1px solid #555;border-bottom-width:3px;border-radius:5px;
+    padding:2px 8px;font-family:'Courier New',monospace;font-size:.9em}
+  .howto{text-align:left}
+  .howto li{margin:10px 0 10px 20px;line-height:1.6}
+  #practiceWord{font-family:'Courier New',monospace;font-size:1.6em;letter-spacing:.15em;
+    margin:14px 0;color:var(--parch)}
+  #practiceWord .done{color:var(--gold)}
+  #practiceWord .cur{background:rgba(245,197,66,.3)}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="title" class="overlay">
+  <div class="panel">
+    <h1>KEYSTROKE<br>CHRONICLES</h1>
+    <div class="subtitle">A TYPING RPG</div>
+    <p style="color:rgba(232,220,192,.75);font-style:italic">The Inkblight eats written words.<br>Your keystrokes are the last magic left.</p>
+    <button class="btn" id="btnNew">⚔ New Game</button>
+    <button class="btn" id="btnContinue">📖 Continue</button>
+    <button class="btn" id="btnHow">❓ How to Play</button>
+    <button class="btn" id="btnSettings">⚙ Settings</button>
+    <div id="titleBest" style="margin-top:14px;font-size:.85em;color:rgba(232,220,192,.55)"></div>
+  </div>
+</div>
+
+<div id="howto" class="overlay hidden">
+  <div class="panel howto">
+    <h2>How to Play</h2>
+    <ul>
+      <li>Words appear on screen. <b>Type them</b> to cast spells — each finished word hurls a bolt at your foe.</li>
+      <li><b style="color:var(--red)">Red curse-words</b> drift toward you. Type them before they reach you or you'll take damage. Your keystrokes automatically find the right word — just type what glows.</li>
+      <li>Wrong keys break your <b style="color:var(--gold)">combo</b> and cause backlash damage. Chain perfect words for combo multipliers and <b>spell unlocks</b> (<kbd>1</kbd> Fireball · <kbd>2</kbd> Frost Nova · <kbd>3</kbd> Mend).</li>
+      <li><b>Bosses</b> channel passages under a countdown — finish the passage in time for massive damage.</li>
+      <li><kbd>Esc</kbd> pauses. Survive, level up between chapters, and restore the Great Lexicon.</li>
+    </ul>
+    <p style="text-align:center">Try it — type the word below:</p>
+    <div id="practiceWord"></div>
+    <p id="practiceMsg" style="text-align:center;min-height:1.4em;color:var(--green)"></p>
+    <button class="btn" id="btnHowBack">← Back</button>
+  </div>
+</div>
+
+<div id="dialogueBox" class="hidden">
+  <div id="dialogueName"></div>
+  <div id="dialogueText"></div>
+  <div id="dialogueHint">SPACE / ENTER ▸</div>
+</div>
+
+<div id="levelup" class="overlay hidden">
+  <div class="panel">
+    <h2>✦ LEVEL UP ✦</h2>
+    <p>Choose a boon, Leximancer:</p>
+    <div class="cardrow" id="levelCards"></div>
+  </div>
+</div>
+
+<div id="report" class="overlay hidden">
+  <div class="panel">
+    <h2 id="reportTitle">Battle Report</h2>
+    <div class="statgrid" id="reportStats"></div>
+    <button class="btn" id="btnReportNext">Continue ▸</button>
+  </div>
+</div>
+
+<div id="ending" class="overlay hidden">
+  <div class="panel">
+    <h2 id="endingTitle"></h2>
+    <p id="endingText" style="text-align:left;line-height:1.8"></p>
+    <div class="statgrid" id="endingStats"></div>
+    <button class="btn" id="btnEndingTitle">Return to Title</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel" style="max-width:420px">
+    <h2>⏸ Paused</h2>
+    <button class="btn" id="btnResume">Resume</button>
+    <button class="btn" id="btnRestart">Restart Battle</button>
+    <button class="btn" id="btnMute">🔊 Mute</button>
+    <button class="btn" id="btnQuit">Quit to Title</button>
+  </div>
+</div>
+
+<div id="settings" class="overlay hidden">
+  <div class="panel" style="max-width:480px">
+    <h2>⚙ Settings</h2>
+    <div class="settingrow"><span>Difficulty</span><span class="opts" id="optDiff">
+      <button data-v="0">Scribe</button><button data-v="1">Leximancer</button><button data-v="2">Archmage</button></span></div>
+    <div class="settingrow"><span>Screen shake</span><span class="opts" id="optShake">
+      <button data-v="1">On</button><button data-v="0">Off</button></span></div>
+    <div class="settingrow"><span>Dialogue text speed</span><span class="opts" id="optText">
+      <button data-v="0">Slow</button><button data-v="1">Normal</button><button data-v="2">Fast</button></span></div>
+    <div class="settingrow"><span>Sound</span><span class="opts" id="optMute">
+      <button data-v="0">On</button><button data-v="1">Muted</button></span></div>
+    <button class="btn" id="btnSettingsBack">← Back</button>
+  </div>
+</div>
+
+<div class="vnmark">VN</div>
+
+<script>
+'use strict';
+/* ============================================================
+   KEYSTROKE CHRONICLES — a story-driven typing RPG · VN
+   Single-file vanilla JS. Sections:
+   1 Util · 2 Audio · 3 Save · 4 Content · 5 Game state
+   6 Particles/Shake · 7 Battle engine · 8 Renderer
+   9 DOM overlays · 10 Input · 11 Main loop · 12 Test hooks
+   ============================================================ */
+
+/* ---------- 1. Util ---------- */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const randi=(a,b)=>Math.floor(rand(a,b+1));
+const choice=arr=>arr[Math.floor(Math.random()*arr.length)];
+const $=id=>document.getElementById(id);
+
+/* ---------- 2. Audio — WebAudio synthesized SFX (unique set) ---------- */
+const Sfx=(()=>{
+  let ctx=null, master=null, muted=false;
+  function ensure(){
+    if(!ctx){
+      ctx=new (window.AudioContext||window.webkitAudioContext)();
+      master=ctx.createGain(); master.gain.value=0.5; master.connect(ctx.destination);
+    }
+    if(ctx.state==='suspended') ctx.resume();
+    return ctx;
+  }
+  function env(g,t0,a,peak,dur){
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.linearRampToValueAtTime(peak,t0+a);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  }
+  function tone(freq,type,dur,vol=0.3,slideTo=null,delay=0){
+    if(muted) return; const c=ensure(), t0=c.currentTime+delay;
+    const o=c.createOscillator(), g=c.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,t0);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,t0+dur);
+    env(g,t0,0.008,vol,dur); o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0+dur+0.05);
+  }
+  function noise(dur,vol=0.3,filterFreq=1200,delay=0){
+    if(muted) return; const c=ensure(), t0=c.currentTime+delay;
+    const len=Math.max(1,(dur*c.sampleRate)|0);
+    const buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    const s=c.createBufferSource(); s.buffer=buf;
+    const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filterFreq;
+    const g=c.createGain(); env(g,t0,0.005,vol,dur);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t0); s.stop(t0+dur+0.05);
+  }
+  return {
+    unlock(){ ensure(); },
+    setMuted(m){ muted=m; }, isMuted(){ return muted; },
+    key(){ tone(rand(1400,1900),'square',0.03,0.07); },                       // keystroke tick
+    error(){ tone(160,'sawtooth',0.12,0.18,90); },                            // wrong key
+    charge(){ tone(300,'sine',0.25,0.12,900); },                              // word charging riser
+    cast(){ noise(0.25,0.25,3000); tone(700,'sawtooth',0.2,0.15,180); },       // spell bolt
+    fireball(){ noise(0.5,0.4,900); tone(220,'sawtooth',0.45,0.3,60); },      // fireball boom
+    frost(){ [880,1174,1568].forEach((f,i)=>tone(f,'sine',0.4,0.14,null,i*0.07)); }, // frost chime
+    heal(){ [523,659,784,1046].forEach((f,i)=>tone(f,'triangle',0.5,0.13,null,i*0.09)); },
+    hit(){ noise(0.15,0.3,700); tone(140,'square',0.12,0.2,70); },             // enemy takes hit
+    hurt(){ tone(110,'sawtooth',0.3,0.3,55); noise(0.2,0.2,400); },           // player takes hit
+    combo(n){ const base=500+Math.min(n,30)*25; tone(base,'triangle',0.15,0.18,base*1.5); }, // combo milestone
+    curseSpawn(){ tone(220,'sawtooth',0.3,0.1,440); },                        // enemy curse incoming
+    klaxon(){ for(let i=0;i<3;i++){ tone(440,'square',0.15,0.16,null,i*0.2); tone(330,'square',0.15,0.16,null,i*0.2+0.1);} },
+    levelup(){ [392,523,659,784,1046,1318].forEach((f,i)=>tone(f,'triangle',0.35,0.16,null,i*0.08)); },
+    victory(){ [523,659,784,1046].forEach((f,i)=>tone(f,'triangle',0.5,0.18,null,i*0.12)); tone(262,'sine',1.2,0.12,null,0.5); },
+    defeat(){ [330,262,196,131].forEach((f,i)=>tone(f,'sawtooth',0.6,0.14,null,i*0.18)); },
+    click(){ tone(800,'sine',0.06,0.12); },
+    bossDie(){ noise(1.0,0.4,500); tone(80,'sawtooth',1.0,0.3,40); [1046,1318,1568].forEach((f,i)=>tone(f,'triangle',0.6,0.12,null,0.4+i*0.1)); },
+  };
+})();
+
+/* ---------- 3. Save ---------- */
+const Save=(()=>{
+  const KEY='kc_save_v1';
+  let mem=null, ok=true;
+  try{ localStorage.setItem('__kc_t','1'); localStorage.removeItem('__kc_t'); }
+  catch(e){ ok=false; }
+  return {
+    load(){ try{ return ok?JSON.parse(localStorage.getItem(KEY)):mem; }catch(e){ return mem; } },
+    write(d){ mem=d; if(!ok) return false;
+      try{ localStorage.setItem(KEY,JSON.stringify(d)); return true; }catch(e){ return false; } },
+    clear(){ mem=null; if(ok){ try{localStorage.removeItem(KEY);}catch(e){} } },
+    available(){ return ok; }
+  };
+})();
+
+/* ---------- 4. Content — all original prose ---------- */
+const WORDS={
+ch1:["ember","ash","cinder","quill","scroll","tome","ruin","smoke","spark","flint","char","glyph","rune","ink","page","folio","binding","wax","seal","script","verse","stanza","margin","codex","parchment","kindling","hearth","brazier","soot","emberfall","scorch","brand","saga","myth","fable","chronicle","anvil","forge","hammer"],
+ch2:["tide","brine","coral","pearl","abyss","current","lagoon","kelp","anchor","harbor","nautical","sonar","drift","foam","gull","reef","trident","siren","lagoon","plunge","drizzle","mist","puddle","brook","estuary","mariner","compass","chart","lighthouse","undertow","seashell","starfish","octopus","whirlpool","deluge","monsoon","puddle","rivulet"],
+ch3:["gale","zephyr","tempest","cyclone","summit","cliff","crag","avalanche","thunder","lightning","hail","blizzard","altitude","ridge","precipice","squall","monsoon","tornado","updraft","downdraft"," Cirrus".trim(),"stratus","cumulus","nimbus","vortex","whirlwind","breeze","gust","draft","flurry","sleet","frost","glacier","moraine","talus","scree","arete","col"],
+ch4:["gold","gilded","coin","treasure","vault","ingot","filigree","carat","bullion","mint","hoard","relic","crown","scepter","chalice","goblet","lattice","maze","corridor","portal","archway","keystone","mosaic","tapestry","chandelier","sconce","gargoyle","plinth","obelisk","amulet","talisman","locket","brooch","diadem","sundial","astrolabe","compass","cartouche"],
+ch5:["shadow","bargain","mask","veil","whisper","secret","contract","ledger","debt","wager","gamble","mirage","phantom","specter","wraith","shade","gloom","murk","haze","cipher","enigma","riddle","puzzle","conundrum","facade","guise","pretense","allure","lure","snare","trap","ambush","plot","scheme","intrigue","gossip","rumor","murmur"],
+ch6:["void","blot","null","abyss","hollow","empty","vacant","bleak","stark","grim","dread","terror","nightmare","oblivion","entropy","decay","rot","wither","fade","dissolve","unravel","fray","shatter","splinter","fracture","rupture","sever","erase","delete","redact","censor","silence","mute","still","stagnant","cold","dark","eclipse"]
+};
+const BOSSES={
+ch1:{name:"Razzik, the Cinder Imp",hp:220,curseDmg:8,curseEvery:4.2,curseTime:7,
+  passage:"The imp cackles as the shelves burn. You raise your quill like a wand and the words come faster than the flames. Every letter is a spark. Every word is a shield."},
+ch2:{name:"Morla, Tidewarden",hp:340,curseDmg:10,curseEvery:3.8,curseTime:6.5,
+  passage:"Water takes the words if you let it. You speak against the tide, each syllable a stone in the dam. The drowned books listen. The library remembers how to breathe."},
+ch3:{name:"Vex, the Storm Herald",hp:470,curseDmg:12,curseEvery:3.4,curseTime:6,
+  passage:"Lightning writes across the sky in a language older than fear. You answer it line for line. The wind steals your voice and you steal it back, louder, letter by letter."},
+ch4:{name:"Aurum, the Giltwarden",hp:600,curseDmg:14,curseEvery:3.0,curseTime:5.5,
+  passage:"Gold is only pretty lead until a word gives it weight. You spend your sentences like coins and the maze pays you back in echoes. The minotaur of mirrors cannot reflect a truth."},
+ch5:{name:"The Hollow Broker",hp:740,curseDmg:16,curseEvery:2.7,curseTime:5,
+  passage:"Every deal has fine print and you have read it all. You sign your name in fire across his contract. The market of shadows closes its stalls one by one as your voice fills the square."},
+ch6:{name:"The Inkblight Avatar",hp:900,curseDmg:18,curseEvery:2.4,curseTime:4.5,
+  passage:"It has no face, only the absence where faces were written. You write anyway. You write your master's name. You write your own. The last word lands like a sunrise and the dark learns how to read."}
+};
+const NORMIES={
+ch1:[{name:"Ash Sprite",hp:70},{name:"Cinder Hound",hp:90}],
+ch2:[{name:"Brine Lurker",hp:95},{name:"Drowned Page",hp:115}],
+ch3:[{name:"Gale Harpy",hp:120},{name:"Ridge Wraith",hp:140}],
+ch4:[{name:"Gilded Hound",hp:150},{name:"Maze Phantom",hp:170}],
+ch5:[{name:"Debt Collector",hp:180},{name:"Masked Shade",hp:200}],
+ch6:[{name:"Blot Spawn",hp:210},{name:"Null Hound",hp:230}]
+};
+const CHAPTERS=[
+{id:"ch1",title:"Chapter I — Ashes of the Scriptorium",
+ intro:"The Scriptorium of Candlehold burned for three nights. When the smoke cleared, every book was blank — and Master Elian was gone. All that remained was his quill, still warm, and a single scorched word on the floor: RUN.",
+ beats:[
+  {who:"Ash",text:"Master? MASTER! The shelves... the words are just... gone. Even the smell of ink is gone."},
+  {who:"Scorched Quill",text:"The quill trembles in your hand. It remembers being held. It remembers the shape of your master's handwriting — and it is angry."},
+  {who:"Ash",text:"Then we fight with what's left. A Leximancer's power was never in the books. It was in the typing. In the words themselves."},
+  {who:"Razzik",text:"Ooooh, a little scribe with a big quill! Come, come — let's see how fast your fingers bleed, little scribe!"}]},
+{id:"ch2",title:"Chapter II — The Drowned Library",
+ intro:"The tide took the coastal library of Vellumport a decade ago. Divers say the books down there still turn their own pages. The Inkblight drinks deep here — and something guards the shallows.",
+ beats:[
+  {who:"Ash",text:"Salt in the air, rot in the stacks. If the Lexicon has a backup copy anywhere, it's in the drowned vault."},
+  {who:"Morla",text:"THE TIDE TAKES WHAT IS WRITTEN, CHILD. YOUR WORDS WILL DISSOLVE LIKE ALL THE REST."},
+  {who:"Ash",text:"Then I'll write faster than you can drown them, Tidewarden."}]},
+{id:"ch3",title:"Chapter III — Gale of the Shattered Peaks",
+ intro:"The mountain monastery of Quillspire kept the wind-lexicons — words light enough to fly. The storm that guards the pass is not weather. It hasn't been weather for years.",
+ beats:[
+  {who:"Ash",text:"Each step up, the wind tears another memory loose. I have to keep narrating myself, or I'll forget why I climbed."},
+  {who:"Vex",text:"LITTLE MOTH, THE SKY DOES NOT NEGOTIATE. GIVE ME YOUR VOCABULARY AND I MAY LET YOU FALL QUICKLY."},
+  {who:"Ash",text:"You'll have to catch every syllable first, Herald."}]},
+{id:"ch4",title:"Chapter IV — The Gilded Labyrinth",
+ intro:"Beneath the mint-city of Aurice lies a maze where every wall is a page of beaten gold. The Giltwarden was once the royal treasurer. Now he collects something else: other people's sentences.",
+ beats:[
+  {who:"Ash",text:"Gold walls, gold doors, gold lies. Somewhere in here is the treasury lexicon — the words that named every coin ever minted."},
+  {who:"Aurum",text:"TRESPASSER. YOUR WORDS ARE UNMINTED, UNSTAMPED, WORTHLESS. I SHALL MELT THEM DOWN."},
+  {who:"Ash",text:"Try it. My words were never for sale."}]},
+{id:"ch5",title:"Chapter V — The Hollow Market",
+ intro:"Once a month, when the moon is thin, the Hollow Market opens in the square of every city at once. It sells memories, voices, and first drafts. The Broker who runs it has been buying up endings.",
+ beats:[
+  {who:"Ash",text:"This place smells of old paper and bad decisions. If the Broker has been buying endings, then mine is on a shelf somewhere — and I'm repossessing it."},
+  {who:"The Hollow Broker",text:"AH, THE SCRIBE. I HAVE YOUR ENDING RIGHT HERE, LITTLE ONE. SHALL WE DISCUSS... TERMS?"},
+  {who:"Ash",text:"No terms. No deals. Just words — mine, and faster than yours."}]},
+{id:"ch6",title:"Chapter VI — Heart of the Inkblight",
+ intro:"The Blight began as a single blotted page in the Great Lexicon. Now it is a country of unbeing at the center of the isles. Master Elian's trail ends here. So does everything else, unless you end it first.",
+ beats:[
+  {who:"Ash",text:"This is it. The place where words go to die. Master... if any part of you is still written down in there, I'm coming."},
+  {who:"The Inkblight Avatar",text:"... ... ..."},
+  {who:"Ash",text:"Nothing to say? Good. Then listen to me."}]}
+];
+const ENDINGS={
+dawn:{title:"✦ DAWNBRINGER ✦",text:"The last word lands like a sunrise. Light pours back into the shelves of Candlehold, the drowned books surface, and the wind over Quillspire learns to spell again. In the center of the restored Great Lexicon, a new page writes itself — and on it, in Master Elian's hand: \"Well typed, apprentice.\" The Ember Isles will never run out of words again."},
+ashen:{title:"ASHEN VICTORY",text:"The Inkblight is broken, but the isles bear its scars — whole libraries remember only half their stories, and some words never came home. Still: children in Candlehold are learning their letters again, and every letter is a small rebellion. You did what your master could not. It was enough. It had to be."},
+inkbound:{title:"◈ THE INKBOUND ◈",text:"You did not merely defeat the dark — you out-wrote it, flawlessly, without a single falter. The Lexicon opens like an eye and looks at you, and you understand: someone must hold the words together from the inside. You step into the page. Somewhere, a new apprentice finds a warm quill and a scorched word on the floor. The story continues — it always continues — because of you."}
+};
+const LEVEL_CARDS=[
+ {id:"power",name:"⚔ Power",desc:"+3 spell damage per character. Hit harder with every word."},
+ {id:"vitality",name:"❤ Vitality",desc:"+25 max HP, and heal 25 now. Survive the long duels."},
+ {id:"focus",name:"🎯 Focus",desc:"Combo multiplier cap raised to 4×, backlash damage halved. Precision rewarded."}
+];
+
+/* ---------- 5. Game state ---------- */
+const Game={
+  state:'title', paused:false, settingsOpen:false, settingsReturn:null,
+  chapter:0,           // index into CHAPTERS
+  level:1, power:0, vitality:0, focus:0,
+  maxHp:100, hp:100,
+  spells:{fireball:false,frost:false,mend:false},  // unlocked this run
+  mendUsed:false,
+  chAcc:[],            // accuracy per finished chapter
+  deaths:0, maxComboEver:0,
+  settings:{difficulty:1, shake:1, textSpeed:1, muted:0},
+  best:{wpm:0, acc:0},
+  endings:[],
+  time:0,
+  init(){
+    const s=Save.load();
+    if(s){
+      this.settings=Object.assign(this.settings,s.settings||{});
+      this.best=s.best||this.best; this.endings=s.endings||[];
+      Sfx.setMuted(!!this.settings.muted);
+    }
+    $('btnContinue').disabled=!(s&&s.started);
+    if(s&&s.best&&(s.best.wpm>0))
+      $('titleBest').textContent=`Best: ${s.best.wpm} WPM · ${s.best.acc}% accuracy`;
+  },
+  newGame(){
+    this.chapter=0; this.level=1; this.power=0; this.vitality=0; this.focus=0;
+    this.maxHp=100; this.hp=100;
+    this.spells={fireball:false,frost:false,mend:false};
+    this.chAcc=[]; this.deaths=0; this.maxComboEver=0;
+    this.persistProgress();
+    Flow.startChapter(0);
+  },
+  continueGame(){
+    const s=Save.load(); if(!s||!s.started) return;
+    this.chapter=s.chapter; this.level=s.level; this.power=s.power;
+    this.vitality=s.vitality; this.focus=s.focus;
+    this.maxHp=100+this.vitality*25+(this.level-1)*10; this.hp=this.maxHp;
+    this.spells={fireball:false,frost:false,mend:false};
+    this.chAcc=s.chAcc||[]; this.deaths=s.deaths||0; this.maxComboEver=s.maxComboEver||0;
+    Flow.startChapter(this.chapter);
+  },
+  persistProgress(){
+    const s=Save.load()||{};
+    Save.write(Object.assign(s,{started:1,chapter:this.chapter,level:this.level,power:this.power,
+      vitality:this.vitality,focus:this.focus,chAcc:this.chAcc,deaths:this.deaths,
+      maxComboEver:this.maxComboEver,settings:this.settings,best:this.best,endings:this.endings}));
+  },
+  dmgPerChar(){ return 2+this.power; },
+  comboCap(){ return this.focus>0?4:3; },
+  backlash(){ return this.focus>0?1:2; },
+  diffMul(){ return [0.75,1,1.3][this.settings.difficulty]; },
+  applyDifficulty(hp,curseEvery,curseTime){
+    const d=this.settings.difficulty;
+    return { hp:Math.round(hp*(d===0?0.75:d===2?1.3:1)),
+      curseEvery:curseEvery*(d===0?1.3:d===2?0.7:1),
+      curseTime:curseTime*(d===0?1.3:d===2?0.75:1) };
+  }
+};
+
+/* ---------- 6. Particles & screen shake ---------- */
+const Particles=(()=>{
+  const pool=[]; for(let i=0;i<300;i++) pool.push({x:0,y:0,vx:0,vy:0,life:0,max:1,size:2,color:'#fff',grav:0});
+  let n=0;
+  return {
+    spawn(x,y,color,count,speed,life,size,grav){
+      for(let i=0;i<count;i++){
+        const p=pool[(n++)%pool.length];
+        const a=Math.random()*Math.PI*2, s=rand(speed*0.3,speed);
+        p.x=x; p.y=y; p.vx=Math.cos(a)*s; p.vy=Math.sin(a)*s;
+        p.life=p.max=rand(life*0.6,life); p.size=rand(size*0.5,size);
+        p.color=color; p.grav=grav||0;
+      }
+    },
+    burst(x,y,color,count=24){ this.spawn(x,y,color,count,260,0.7,4,300); },
+    update(dt){
+      for(const p of pool){ if(p.life<=0) continue;
+        p.life-=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=p.grav*dt; p.vx*=0.98; }
+    },
+    draw(c){
+      for(const p of pool){ if(p.life<=0) continue;
+        c.globalAlpha=clamp(p.life/p.max,0,1);
+        c.fillStyle=p.color;
+        c.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+      }
+      c.globalAlpha=1;
+    },
+    ambient(dt,w,h){
+      if(Math.random()<dt*6) this.spawn(rand(0,w),h+10,'#ff7a2f',1,20,4,2.5,-30);
+      if(Math.random()<dt*3) this.spawn(rand(0,w),h+10,'#9b6bff',1,14,5,2,-20);
+    }
+  };
+})();
+const Shake={ trauma:0,
+  add(a){ if(Game.settings.shake) this.trauma=clamp(this.trauma+a,0,1); },
+  update(dt){ this.trauma=Math.max(0,this.trauma-dt*1.6); },
+  offset(){ const s=this.trauma*this.trauma*22;
+    return {x:rand(-s,s), y:rand(-s,s)}; }
+};
+
+/* ---------- 7. Battle engine ---------- */
+const Battle={
+  active:false, cfg:null, enemy:null, spellWord:null, curses:[], nextCurse:0,
+  combo:0, maxCombo:0, correctChars:0, totalKeys:0, battleTime:0,
+  fireArmed:false, frostReady:false, channel:null, won:false, lost:false,
+  dmgDealt:0, dmgTaken:0, wordsDone:0, startTime:0, wpm:0,
+  wordPool:[], chKey:'ch1', isBoss:false, frozen:0, activeId:'spell',
+
+  start(cfg){
+    this.active=true; this.cfg=cfg; this.chKey=cfg.chKey; this.isBoss=cfg.boss;
+    this.wordPool=[...WORDS[this.chKey]];
+    const d=Game.applyDifficulty(cfg.hp,cfg.curseEvery,cfg.curseTime);
+    this.enemy={name:cfg.name,hp:d.hp,maxHp:d.hp,curseEvery:d.curseEvery,
+      curseTime:d.curseTime,timer:d.curseEvery*0.6,x:0,y:0,flash:0};
+    this.curses=[]; this.nextCurse=this.enemy.curseEvery;
+    this.combo=0; this.maxCombo=0; this.correctChars=0; this.totalKeys=0;
+    this.battleTime=0; this.dmgDealt=0; this.dmgTaken=0; this.wordsDone=0;
+    this.fireArmed=false; this.frostReady=false; this.channel=null;
+    this.won=false; this.lost=false; this.frozen=0; this.activeId='spell';
+    this.channelDone1=false; this.channelDone2=false;
+    Game.mendUsed=false;
+    this.newSpellWord();
+    this.startTime=performance.now();
+    Game.state='battle';
+    Sfx.klaxon();
+  },
+  pickWord(minL,maxL){
+    const pool=this.wordPool.filter(w=>w.length>=minL&&w.length<=maxL);
+    return choice(pool.length?pool:this.wordPool);
+  },
+  newSpellWord(){
+    const d=Game.settings.difficulty;
+    const w=this.pickWord(d===0?3:4,d===2?9:7);
+    this.spellWord={id:'spell',text:w,pos:0,x:0,y:0};
+    this.activeId='spell';
+  },
+  spawnCurse(){
+    const d=Game.settings.difficulty;
+    const w=this.pickWord(3,d===2?8:6);
+    const id='c'+Math.random().toString(36).slice(2,7);
+    this.curses.push({id,text:w,pos:0,t:0,dur:this.enemy.curseTime,
+      x:Renderer.w*0.72+rand(-30,30),y:Renderer.h*0.3+rand(-46,46)});
+    Sfx.curseSpawn();
+  },
+  targets(){
+    const t=[];
+    if(this.spellWord) t.push(this.spellWord);
+    for(const c of this.curses) t.push(c);
+    if(this.channel) t.push(this.channel);
+    return t;
+  },
+  byId(id){
+    if(id==='spell') return this.spellWord;
+    if(id==='channel') return this.channel;
+    return this.curses.find(c=>c.id===id);
+  },
+  /* ZType-style routing: key goes to active target if it matches,
+     else to any target whose next char matches, else it's a mistake. */
+  handleChar(ch){
+    if(!this.active||this.won||this.lost) return;
+    ch=ch.toLowerCase();
+    if(ch===' '&&this.channel){ /* spaces allowed only in channel */ }
+    else if(ch===' '||ch.length!==1||!/[a-z' ]/.test(ch)) return;
+    this.totalKeys++;
+    let t=this.byId(this.activeId);
+    const matches=(w)=>w&&w.pos<w.text.length&&w.text[w.pos].toLowerCase()===ch;
+    if(!matches(t)){
+      t=this.targets().find(matches);
+      if(t) this.activeId=t.id;
+    }
+    if(matches(t)){
+      t.pos++; this.correctChars++; this.wordsDone+=0;
+      Sfx.key();
+      if(t.pos>=t.text.length) this.completeTarget(t);
+    }else{
+      this.breakCombo();
+    }
+    this.updateWpm();
+  },
+  completeTarget(t){
+    if(t.id==='spell'){
+      let dmg=t.text.length*Game.dmgPerChar();
+      this.combo++; this.maxCombo=Math.max(this.maxCombo,this.combo);
+      Game.maxComboEver=Math.max(Game.maxComboEver,this.combo);
+      const mult=Math.min(1+this.combo*0.05,Game.comboCap());
+      dmg=Math.round(dmg*mult);
+      if(this.fireArmed){ dmg=Math.round(dmg*2.5); this.fireArmed=false;
+        Particles.burst(t.x,t.y,'#ff7a2f',40); Sfx.fireball(); Shake.add(0.5); }
+      else { Particles.burst(t.x,t.y,'#f5c542',18); Sfx.cast(); }
+      this.damageEnemy(dmg,t.x,t.y);
+      this.wordsDone++;
+      this.checkSpellUnlocks();
+      this.newSpellWord();
+    }else if(t.id==='channel'){
+      // boss channel completed
+      const dmg=Math.round(this.enemy.maxHp*0.4);
+      this.damageEnemy(dmg,Renderer.w*0.72,Renderer.h*0.35);
+      this.enemy.stun=3; this.channel=null; this.activeId='spell';
+      Particles.burst(Renderer.w*0.72,Renderer.h*0.35,'#ffffff',60);
+      Sfx.bossDie(); Shake.add(0.7);
+      this.combo+=2; this.maxCombo=Math.max(this.maxCombo,this.combo);
+    }else{
+      // curse destroyed
+      const dmg=Math.round(t.text.length*Game.dmgPerChar()*0.6);
+      this.damageEnemy(dmg,t.x,t.y);
+      this.curses=this.curses.filter(c=>c.id!==t.id);
+      this.combo++; this.maxCombo=Math.max(this.maxCombo,this.combo);
+      Particles.burst(t.x,t.y,'#9b6bff',14); Sfx.hit();
+      this.checkSpellUnlocks();
+      if(this.activeId===t.id) this.activeId='spell';
+    }
+  },
+  checkSpellUnlocks(){
+    if(this.combo>=10&&!this.spellWord.fireNotified){
+      /* fireball unlock handled via key 1 once combo hit 10 */
+    }
+    if(this.combo===10||this.combo===20||this.combo===30){
+      Sfx.combo(this.combo);
+      Particles.spawn(Renderer.w/2,Renderer.h*0.55,'#f5c542',30,180,0.8,3,0);
+    }
+  },
+  breakCombo(){
+    if(this.combo>=5) Particles.spawn(Renderer.w/2,Renderer.h*0.6,'#ff4d5e',10,120,0.5,3,0);
+    this.combo=0; Sfx.error();
+    this.hpDamage(Game.backlash(),true);
+  },
+  damageEnemy(dmg,x,y){
+    this.enemy.hp-=dmg; this.enemy.flash=0.15; this.dmgDealt+=dmg;
+    Renderer.dmgNum({x,y,txt:'-'+dmg,t:0.9,color:'#ffd76a'});
+    if(this.enemy.hp<=0&&!this.won){ this.win(); }
+  },
+  hpDamage(dmg,silent){
+    Game.hp-=dmg; this.dmgTaken+=dmg; Shake.add(0.45);
+    Renderer.flashRed=0.35;
+    if(!silent) Sfx.hurt();
+    Particles.burst(Renderer.w/2,Renderer.h*0.55,'#ff4d5e',16);
+    if(Game.hp<=0&&!this.lost){ this.lose(); }
+  },
+  update(dt){
+    if(!this.active||this.won||this.lost) return;
+    this.battleTime+=dt;
+    if(this.frozen>0){ this.frozen-=dt; }
+    const f=this.frozen>0;
+    // enemy curse spawner
+    if(!f){
+      this.nextCurse-=dt;
+      if(this.nextCurse<=0&&this.curses.length<4){
+        this.spawnCurse(); this.nextCurse=this.enemy.curseEvery*rand(0.85,1.2);
+      }
+    }
+    // curse drift
+    const px=Renderer.w/2, py=Renderer.h*0.62;
+    for(const c of this.curses){
+      if(!f) c.t+=dt;
+      const k=clamp(c.t/c.dur,0,1);
+      c.x=lerp(Renderer.w*0.72,px,k); c.y=lerp(Renderer.h*0.3,py,k)+Math.sin(c.t*6)*8;
+      if(k>=1){
+        this.curses=this.curses.filter(x=>x.id!==c.id);
+        const dd=Math.round(this.cfg.curseDmg*Game.diffMul());
+        this.hpDamage(dd);
+        if(this.activeId===c.id) this.activeId='spell';
+      }
+    }
+    // boss channel logic
+    if(this.isBoss&&!this.channel&&this.enemy.hp<this.enemy.maxHp*0.66&&!this.channelDone1){
+      this.startChannel(); this.channelDone1=true;
+    }
+    if(this.isBoss&&!this.channel&&this.enemy.hp<this.enemy.maxHp*0.33&&!this.channelDone2){
+      this.startChannel(); this.channelDone2=true;
+    }
+    if(this.channel){
+      this.channel.t+=dt;
+      if(this.channel.t>=this.channel.dur){
+        this.hpDamage(Math.round(25*Game.diffMul()));
+        this.channel=null; this.activeId='spell';
+      }
+    }
+    if(this.enemy.flash>0) this.enemy.flash-=dt;
+    if(this.enemy.stun>0) this.enemy.stun-=dt;
+    this.updateWpm();
+  },
+  startChannel(){
+    // normalize: only typeable chars (letters, apostrophe, single spaces)
+    const txt=this.cfg.passage.toLowerCase().replace(/[^a-z' ]/g,'').replace(/\s+/g,' ').trim();
+    this.channel={id:'channel',text:txt,pos:0,t:0,dur:52,x:0,y:0};
+    this.activeId='channel';
+    Sfx.klaxon();
+    Renderer.banner('⚠ BOSS CHANNEL — TYPE THE PASSAGE! ⚠');
+  },
+  updateWpm(){
+    const mins=this.battleTime/60;
+    this.wpm=mins>0.02?Math.round((this.correctChars/5)/mins):0;
+  },
+  accuracy(){ return this.totalKeys?Math.min(100,Math.round(this.correctChars/this.totalKeys*100)):100; },
+  castSpell(n){
+    if(n===1&&this.combo>=10&&!this.fireArmed){ this.fireArmed=true; Sfx.charge();
+      Renderer.banner('🔥 FIREBALL ARMED — next word burns!'); return; }
+    if(n===2&&this.combo>=20&&this.frostReady!==true&&this.frozen<=0){
+      this.frozen=5; Sfx.frost(); Renderer.banner('❄ FROST NOVA — enemy frozen!');
+      Particles.spawn(Renderer.w*0.72,Renderer.h*0.35,'#9be8ff',50,220,1,4,0); return; }
+    if(n===3&&Game.spells.mend&&!Game.mendUsed){
+      Game.mendUsed=true;
+      Game.hp=Math.min(Game.maxHp,Game.hp+Math.round(Game.maxHp*0.25));
+      Sfx.heal(); Renderer.banner('✚ MENDED');
+      Particles.spawn(Renderer.w/2,Renderer.h*0.55,'#6fe08a',40,160,1,4,-60); return; }
+    Sfx.error();
+  },
+  win(){
+    this.won=true; this.active=false;
+    const acc=this.accuracy();
+    Game.best.wpm=Math.max(Game.best.wpm,this.wpm);
+    Game.best.acc=Math.max(Game.best.acc,acc);
+    Sfx.victory();
+    Particles.burst(Renderer.w*0.72,Renderer.h*0.35,'#f5c542',80);
+    Game.persistProgress();
+    setTimeout(()=>Report.show(this),900);
+  },
+  lose(){
+    this.lost=true; this.active=false; Game.deaths++;
+    Sfx.defeat(); Shake.add(0.8);
+    Game.persistProgress();
+    setTimeout(()=>Report.show(this,true),900);
+  }
+};
+
+/* ---------- 8. Renderer (canvas) ---------- */
+const Renderer=(()=>{
+  const cv=$('game'), c=cv.getContext('2d');
+  let W=0,H=0,DPR=1;
+  const dmgNums=[]; let bannerTxt=null,bannerT=0;
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=window.innerWidth; H=window.innerHeight;
+    cv.width=W*DPR; cv.height=H*DPR; cv.style.width=W+'px'; cv.style.height=H+'px';
+    c.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize',resize); resize();
+  const R={
+    get w(){return W;}, get h(){return H;},
+    flashRed:0,
+    dmgNum(d){ dmgNums.push(d); },
+    banner(t){ bannerTxt=t; bannerT=2.2; Sfx.click(); },
+    px(){ return W/2; }, py(){ return H*0.62; },
+    ex(){ return W*0.72; }, ey(){ return H*0.32; },
+    draw(dt){
+      const ox=Shake.offset().x, oy=Shake.offset().y;
+      c.save(); c.translate(ox,oy);
+      // background: arcane gradient + stars + vignette
+      const g=c.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'#141026'); g.addColorStop(0.55,'#0d0a1c'); g.addColorStop(1,'#070510');
+      c.fillStyle=g; c.fillRect(-30,-30,W+60,H+60);
+      c.fillStyle='rgba(255,255,255,.5)';
+      for(let i=0;i<70;i++){
+        const x=(i*97.3)%W, y=(i*57.7)%H;
+        const tw=0.25+0.25*Math.sin(Game.time*2+i);
+        c.globalAlpha=Math.max(0.05,tw); c.fillRect(x,y,2,2);
+      }
+      c.globalAlpha=1;
+      Particles.ambient(dt,W,H);
+      if(Game.state==='battle'||Game.state==='dialogue') this.scene(dt);
+      // red damage vignette
+      if(this.flashRed>0){
+        const vg=c.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,H*0.75);
+        vg.addColorStop(0,'rgba(255,40,60,0)'); vg.addColorStop(1,`rgba(255,40,60,${clamp(this.flashRed,0,0.55)})`);
+        c.fillStyle=vg; c.fillRect(-30,-30,W+60,H+60);
+        this.flashRed-=dt;
+      }
+      // damage numbers
+      c.textAlign='center';
+      for(let i=dmgNums.length-1;i>=0;i--){
+        const d=dmgNums[i]; d.t-=dt; d.y-=40*dt;
+        if(d.t<=0){ dmgNums.splice(i,1); continue; }
+        c.globalAlpha=clamp(d.t,0,1); c.fillStyle=d.color;
+        c.font='bold 26px Georgia'; c.fillText(d.txt,d.x,d.y);
+      }
+      c.globalAlpha=1;
+      // banner
+      if(bannerT>0){
+        bannerT-=dt;
+        c.globalAlpha=clamp(bannerT,0,1);
+        c.fillStyle='#f5c542'; c.font='bold 24px Georgia';
+        c.fillText(bannerTxt,W/2,H*0.16);
+        c.globalAlpha=1;
+      }
+      c.restore();
+      Particles.update(dt); Particles.draw(c);
+      if(Game.state==='battle') this.hud(dt);
+    },
+    scene(dt){
+      const ex=this.ex(), ey=this.ey(), px=this.px(), py=this.py();
+      const bob=Math.sin(Game.time*2)*6;
+      // enemy (themed blob creature)
+      if(Battle.active||Battle.won){
+        const e=Battle.enemy, theme=CHAPTERS[Game.chapter]||CHAPTERS[0];
+        const cols={ch1:'#ff7a2f',ch2:'#4db8ff',ch3:'#b8e6ff',ch4:'#f5c542',ch5:'#9b6bff',ch6:'#3a2a5e'};
+        const col=cols[theme.id]||'#ff7a2f';
+        const flash=e.flash>0;
+        c.save(); c.translate(ex,ey+bob);
+        const r=44+Math.sin(Game.time*3)*3;
+        c.fillStyle=flash?'#ffffff':col; c.globalAlpha=flash?0.9:0.85;
+        c.beginPath(); c.arc(0,0,r,0,7); c.fill();
+        c.globalAlpha=0.35; c.beginPath(); c.arc(0,0,r+10+Math.sin(Game.time*4)*4,0,7); c.fill();
+        c.globalAlpha=1; c.fillStyle='#0b0a14';
+        const look=clamp((px-ex)/W,-1,1)*8;
+        c.beginPath(); c.arc(-14+look,-8,9,0,7); c.arc(14+look,-8,9,0,7); c.fill();
+        c.fillStyle='#ff4d5e';
+        c.beginPath(); c.arc(-14+look,-8,3.5,0,7); c.arc(14+look,-8,3.5,0,7); c.fill();
+        // jagged mouth
+        c.strokeStyle='#0b0a14'; c.lineWidth=3; c.beginPath();
+        for(let i=-3;i<=3;i++){ const mx=i*9,my=16+((i%2)?-4:4);
+          i===-3?c.moveTo(mx,my):c.lineTo(mx,my); }
+        c.stroke();
+        c.restore();
+        // enemy name + HP
+        c.textAlign='center'; c.fillStyle='#e8dcc0'; c.font='16px Georgia';
+        c.fillText(e.name,ex,ey-70);
+        this.bar(ex-90,ey-58,180,10,e.hp/e.maxHp,'#ff4d5e');
+        if(e.stun>0){ c.fillStyle='#9be8ff'; c.font='14px Georgia'; c.fillText('STUNNED',ex,ey+62); }
+      }
+      // player mage (simple hooded figure)
+      c.save(); c.translate(px,py+bob*0.5);
+      c.fillStyle='#2a2148';
+      c.beginPath(); c.moveTo(-26,40); c.lineTo(0,-34); c.lineTo(26,40); c.closePath(); c.fill();
+      c.fillStyle='#e8dcc0'; c.beginPath(); c.arc(0,-30,11,0,7); c.fill();
+      c.fillStyle='#2a2148'; c.beginPath(); c.moveTo(-13,-34); c.lineTo(0,-52); c.lineTo(13,-34);
+      c.lineTo(8,-30); c.lineTo(-8,-30); c.closePath(); c.fill();
+      // staff with glowing orb
+      c.strokeStyle='#5a4a2f'; c.lineWidth=5; c.beginPath();
+      c.moveTo(24,38); c.lineTo(34,-18); c.stroke();
+      const glow=0.6+0.4*Math.sin(Game.time*5);
+      c.fillStyle=`rgba(245,197,66,${glow})`;
+      c.beginPath(); c.arc(34,-24,9+glow*3,0,7); c.fill();
+      c.restore();
+      // words
+      if(Battle.active) this.words();
+    },
+    words(){
+      c.textAlign='center';
+      // spell word panel
+      const w=Battle.spellWord, px=this.px(), py=this.py();
+      if(w){
+        const fs=clamp(this.w*0.045,26,44);
+        c.font=`${fs}px 'Courier New',monospace`;
+        const tw=c.measureText(w.text).width;
+        c.fillStyle='rgba(10,8,20,.75)';
+        c.fillRect(px-tw/2-18,py+52,tw+36,fs+26);
+        c.strokeStyle=Battle.activeId==='spell'?'#f5c542':'rgba(245,197,66,.25)';
+        c.lineWidth=2; c.strokeRect(px-tw/2-18,py+52,tw+36,fs+26);
+        let x=px-tw/2;
+        for(let i=0;i<w.text.length;i++){
+          const ch=w.text[i];
+          c.fillStyle=i<w.pos?'#f5c542':(i===w.pos?'#ffffff':'rgba(232,220,192,.45)');
+          c.fillText(ch,x+c.measureText(ch).width/2,py+52+fs+8);
+          x+=c.measureText(ch).width;
+          if(i===w.pos){ // caret pulse
+            const p=0.4+0.3*Math.sin(Game.time*8);
+            c.fillStyle=`rgba(245,197,66,${p})`;
+            c.fillRect(x-c.measureText(ch).width-2,py+56,3,fs);
+          }
+        }
+        w.x=px; w.y=py+52+fs;
+      }
+      // curse words drifting in
+      c.font=`${clamp(this.w*0.028,18,28)}px 'Courier New',monospace`;
+      for(const cu of Battle.curses){
+        const danger=clamp(cu.t/cu.dur,0,1);
+        let x=cu.x-cu.text.length*7;
+        c.fillStyle=`rgba(20,8,12,.8)`;
+        const tw=c.measureText(cu.text).width;
+        c.fillRect(cu.x-tw/2-10,cu.y-24,tw+20,34);
+        for(let i=0;i<cu.text.length;i++){
+          const ch=cu.text[i];
+          c.fillStyle=i<cu.pos?'#ff8a95':(i===cu.pos?'#ffffff':`rgba(255,120,130,${0.65+danger*0.35})`);
+          c.fillText(ch,cu.x-tw/2+c.measureText(cu.text.slice(0,i)).width+c.measureText(ch).width/2,cu.y);
+        }
+        if(Battle.activeId===cu.id){
+          c.strokeStyle='#ff4d5e'; c.lineWidth=2;
+          c.strokeRect(cu.x-tw/2-10,cu.y-24,tw+20,34);
+        }
+      }
+      // boss channel passage panel (sized to fit, below the enemy)
+      if(Battle.channel){
+        const ch=Battle.channel;
+        c.font='19px Georgia';
+        const pw=Math.min(this.w*0.86,760);
+        const words=ch.text.split(' ');
+        let line='',lines=[],test='';
+        for(const wd of words){ test=line?line+' '+wd:wd;
+          if(c.measureText(test).width>pw-50){ lines.push(line); line=wd; } else line=test; }
+        lines.push(line);
+        const pTop=this.ey()+64, pH=52+lines.length*26+16;
+        c.fillStyle='rgba(20,8,12,.9)';
+        c.fillRect(this.w/2-pw/2,pTop,pw,pH);
+        c.strokeStyle='#ff4d5e'; c.lineWidth=3;
+        c.strokeRect(this.w/2-pw/2,pTop,pw,pH);
+        c.fillStyle='#ff8a95'; c.font='bold 15px Georgia'; c.textAlign='center';
+        c.fillText(`CHANNELING — ${Math.ceil(ch.dur-ch.t)}s`,this.w/2,pTop+26);
+        c.font='19px Georgia';
+        let ci=0;
+        lines.forEach((ln,li)=>{
+          let x=this.w/2-c.measureText(ln).width/2;
+          const y=pTop+58+li*26;
+          for(const chc of ln){
+            c.fillStyle=ci<ch.pos?'#f5c542':(ci===ch.pos?'#ffffff':'rgba(232,220,192,.5)');
+            c.fillText(chc,x+c.measureText(chc).width/2,y);
+            x+=c.measureText(chc).width; ci++;
+          }
+          ci++; // account for the space
+        });
+        c.textAlign='left';
+      }
+    },
+    bar(x,y,w,h,frac,color){
+      c.fillStyle='rgba(0,0,0,.6)'; c.fillRect(x,y,w,h);
+      c.fillStyle=color; c.fillRect(x,y,w*clamp(frac,0,1),h);
+      c.strokeStyle='rgba(255,255,255,.3)'; c.lineWidth=1; c.strokeRect(x,y,w,h);
+    },
+    hud(dt){
+      c.textAlign='left';
+      // player HP
+      c.fillStyle='#e8dcc0'; c.font='15px Georgia';
+      c.fillText(`ASH · Lv ${Game.level}`,20,32);
+      this.bar(20,40,240,14,Game.hp/Game.maxHp,'#6fe08a');
+      c.fillStyle='#e8dcc0'; c.font='13px Georgia';
+      c.fillText(`${Math.max(0,Math.ceil(Game.hp))}/${Game.maxHp}`,268,52);
+      // combo
+      if(Battle.combo>=2){
+        const s=1+Math.min(Battle.combo,30)*0.012;
+        c.save(); c.translate(this.w-24,60); c.scale(s,s);
+        c.textAlign='right'; c.fillStyle='#f5c542';
+        c.font='bold 26px Georgia';
+        c.fillText(`${Battle.combo}× COMBO`,0,0);
+        c.restore(); c.textAlign='left';
+      }
+      // WPM + accuracy live
+      c.fillStyle='rgba(232,220,192,.85)'; c.font='15px Georgia';
+      c.fillText(`${Battle.wpm} WPM · ${Battle.accuracy()}% acc`,20,this.h-52);
+      // spell slots
+      const spells=[['1','🔥',Battle.combo>=10||Game.spells.fireball,'Fireball'],
+        ['2','❄',Battle.combo>=20,'Frost Nova'],
+        ['3','✚',Game.spells.mend&&!Game.mendUsed,'Mend']];
+      spells.forEach((sp,i)=>{
+        const x=20+i*64, y=this.h-40;
+        c.globalAlpha=sp[2]?1:0.3;
+        c.fillStyle='rgba(20,14,36,.8)'; c.fillRect(x,y,52,30);
+        c.strokeStyle='#9b6bff'; c.strokeRect(x,y,52,30);
+        c.fillStyle='#e8dcc0'; c.font='15px Georgia'; c.textAlign='center';
+        c.fillText(`${sp[0]}${sp[1]}`,x+26,y+20);
+        c.globalAlpha=1;
+      });
+      c.textAlign='left';
+      // frozen timer
+      if(Battle.frozen>0){
+        c.fillStyle='#9be8ff'; c.font='bold 18px Georgia'; c.textAlign='center';
+        c.fillText(`❄ FROZEN ${Battle.frozen.toFixed(1)}s`,this.w/2,90);
+        c.textAlign='left';
+      }
+    }
+  };
+  return R;
+})();
+
+/* ---------- 9. DOM overlays ---------- */
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+function hideAllOverlays(){
+  ['title','howto','levelup','report','ending','pause','settings'].forEach(hide);
+  $('dialogueBox').classList.add('hidden');
+}
+
+const Dialogue={
+  beats:[], idx:0, charI:0, timer:0, done:false,
+  start(chapter){
+    hideAllOverlays();
+    this.beats=[];
+    if(chapter.intro) this.beats.push({who:'❖',text:chapter.intro});
+    for(const b of chapter.beats) this.beats.push(b);
+    this.idx=0; this.done=false;
+    $('dialogueBox').classList.remove('hidden');
+    Game.state='dialogue';
+    this.showBeat();
+  },
+  showBeat(){
+    const b=this.beats[this.idx];
+    $('dialogueName').textContent=b.who;
+    $('dialogueText').textContent='';
+    this.charI=0; this.timer=0;
+  },
+  cps(){ return [22,45,90][Game.settings.textSpeed]; },
+  update(dt){
+    if(Game.state!=='dialogue'||this.done) return;
+    const b=this.beats[this.idx];
+    if(this.charI<b.text.length){
+      this.timer+=dt;
+      const n=Math.floor(this.timer*this.cps());
+      if(n>this.charI){
+        this.charI=Math.min(b.text.length,n);
+        $('dialogueText').textContent=b.text.slice(0,this.charI);
+        if(this.charI%3===0) Sfx.key();
+      }
+    }
+  },
+  advance(){
+    if(this.done) return;
+    const b=this.beats[this.idx];
+    if(!b) return;
+    if(this.charI<b.text.length){ // complete instantly
+      this.charI=b.text.length;
+      $('dialogueText').textContent=b.text; return;
+    }
+    Sfx.click();
+    this.idx++;
+    if(this.idx>=this.beats.length){
+      this.done=true;
+      $('dialogueBox').classList.add('hidden');
+      Flow.nextAfterDialogue();
+    }else this.showBeat();
+  }
+};
+
+const Report={
+  show(battle,lost){
+    hideAllOverlays();
+    Game.state='report';
+    $('reportTitle').textContent=lost?'💀 Defeated':'⚔ Victory!';
+    const acc=battle.accuracy();
+    $('reportStats').innerHTML=
+      `<div>WPM <b>${battle.wpm}</b></div><div>Accuracy <b>${acc}%</b></div>`+
+      `<div>Max combo <b>${battle.maxCombo}×</b></div><div>Time <b>${battle.battleTime.toFixed(1)}s</b></div>`+
+      `<div>Damage dealt <b>${battle.dmgDealt}</b></div><div>Damage taken <b>${battle.dmgTaken}</b></div>`;
+    $('btnReportNext').textContent=lost?'Retry Battle ▸':'Continue ▸';
+    $('btnReportNext').onclick=()=>{ Sfx.click(); hide('report');
+      if(lost){ Game.hp=Game.maxHp; Flow.retryBattle(); }
+      else Flow.nextAfterBattle(acc);
+    };
+    show('report');
+  }
+};
+
+const LevelUp={
+  show(){
+    hideAllOverlays(); Game.state='levelup';
+    Game.level++;
+    Game.maxHp=100+Game.vitality*25+(Game.level-1)*10;
+    const box=$('levelCards'); box.innerHTML='';
+    for(const card of LEVEL_CARDS){
+      const d=document.createElement('div'); d.className='lvlcard';
+      d.innerHTML=`<h3>${card.name}</h3><p>${card.desc}</p>`;
+      d.onclick=()=>{
+        Sfx.levelup();
+        if(card.id==='power') Game.power+=3;
+        if(card.id==='vitality'){ Game.vitality++; Game.maxHp+=25; Game.hp=Math.min(Game.maxHp,Game.hp+25); }
+        if(card.id==='focus') Game.focus++;
+        Game.hp=Game.maxHp;
+        Game.persistProgress();
+        hide('levelup');
+        Flow.nextChapter();
+      };
+      box.appendChild(d);
+    }
+    show('levelup');
+  }
+};
+
+const Ending={
+  show(key){
+    hideAllOverlays(); Game.state='ending';
+    const e=ENDINGS[key];
+    $('endingTitle').textContent=e.title;
+    $('endingText').textContent=e.text;
+    const avg=Game.chAcc.length?Math.round(Game.chAcc.reduce((a,b)=>a+b,0)/Game.chAcc.length):0;
+    $('endingStats').innerHTML=
+      `<div>Chapters cleared <b>6/6</b></div><div>Avg accuracy <b>${avg}%</b></div>`+
+      `<div>Best WPM <b>${Game.best.wpm}</b></div><div>Max combo <b>${Game.maxComboEver}×</b></div>`+
+      `<div>Battles lost <b>${Game.deaths}</b></div><div>Level <b>${Game.level}</b></div>`;
+    if(!Game.endings.includes(key)){ Game.endings.push(key); }
+    Game.persistProgress();
+    show('ending');
+  }
+};
+
+/* Chapter/battle flow sequencer */
+const Flow={
+  battleQueue:[], battleIdx:0, curBoss:false, chKey:'ch1',
+  startChapter(i){
+    Game.chapter=i;
+    const ch=CHAPTERS[i]; this.chKey=ch.id;
+    // mend unlock: previous chapter accuracy >= 95
+    Game.spells.mend=i>0&&(Game.chAcc[i-1]>=95);
+    this.battleQueue=[];
+    const nFights=i<2?1:2;
+    for(let k=0;k<nFights;k++) this.battleQueue.push({boss:false,foe:NORMIES[ch.id][k%2]});
+    this.battleQueue.push({boss:true});
+    this.battleIdx=0;
+    Game.hp=Game.maxHp;
+    Dialogue.start(ch);
+  },
+  nextAfterDialogue(){ this.launchBattle(); },
+  launchBattle(){
+    const b=this.battleQueue[this.battleIdx];
+    const ch=this.chKey;
+    if(b.boss){
+      const B=BOSSES[ch];
+      Battle.start({name:B.name,hp:B.hp,curseDmg:B.curseDmg,curseEvery:B.curseEvery,
+        curseTime:B.curseTime,chKey:ch,boss:true,passage:B.passage});
+    }else{
+      Battle.start({name:b.foe.name,hp:b.foe.hp,curseDmg:6+Game.chapter*2,
+        curseEvery:Math.max(2.2,4.5-Game.chapter*0.35),curseTime:7.5-Game.chapter*0.4,
+        chKey:ch,boss:false});
+    }
+  },
+  retryBattle(){ this.launchBattle(); },
+  nextAfterBattle(acc){
+    Game.chAcc[Game.chapter]=acc;
+    Game.persistProgress();
+    this.battleIdx++;
+    if(this.battleIdx<this.battleQueue.length) this.launchBattle();
+    else LevelUp.show();
+  },
+  nextChapter(){
+    const n=Game.chapter+1;
+    if(n>=CHAPTERS.length){ this.finishCampaign(); }
+    else this.startChapter(n);
+  },
+  finishCampaign(){
+    const avg=Game.chAcc.length?Game.chAcc.reduce((a,b)=>a+b,0)/Game.chAcc.length:0;
+    let key='ashen';
+    if(avg>=90) key='dawn';
+    if(Game.deaths===0&&Game.maxComboEver>=30) key='inkbound';
+    // clear progress save (campaign complete) but keep best/endings/settings
+    const s=Save.load()||{};
+    Save.write({settings:Game.settings,best:Game.best,endings:Game.endings,chapter:0});
+    Sfx.victory();
+    Ending.show(key);
+  }
+};
+
+/* ---------- 10. Input ---------- */
+function routeKey(e){
+  const k=e.key;
+  if(k==='Tab') e.preventDefault();
+  if(k===' '&&Game.state!=='dialogue') e.preventDefault();
+  // pause toggle (Escape only — letters are gameplay!)
+  if(k==='Escape'&&['battle','dialogue'].includes(Game.state)){
+    togglePause(); return;
+  }
+  if(Game.paused) return;
+  if(Game.settingsOpen) return;
+  switch(Game.state){
+    case 'title':
+      if(k==='Enter'){ Sfx.unlock(); $('btnNew').click(); }
+      break;
+    case 'dialogue':
+      if(k===' '||k==='Enter') Dialogue.advance();
+      break;
+    case 'battle':
+      if(k>='1'&&k<='3'){ Battle.castSpell(+k); break; }
+      if(k==='Backspace'){ // step back within active word
+        const t=Battle.byId(Battle.activeId);
+        if(t&&t.pos>0){ t.pos--; Sfx.key(); }
+        break;
+      }
+      if(k.length===1) Battle.handleChar(k);
+      break;
+    case 'report':
+      if(k===' '||k==='Enter') $('btnReportNext').click();
+      break;
+    case 'levelup': break; // click only
+    case 'ending':
+      if(k===' '||k==='Enter') $('btnEndingTitle').click();
+      break;
+  }
+}
+document.addEventListener('keydown',routeKey);
+
+function togglePause(force){
+  if(!['battle','dialogue'].includes(Game.state)) return;
+  Game.paused=force!==undefined?force:!Game.paused;
+  $('pause').classList.toggle('hidden',!Game.paused);
+  $('btnMute').textContent=Sfx.isMuted()?'🔇 Unmute':'🔊 Mute';
+}
+
+/* ---------- menus wiring ---------- */
+function wireMenus(){
+  const click=(id,fn)=>$(id).addEventListener('click',()=>{Sfx.unlock();Sfx.click();fn();});
+  click('btnNew',()=>{ hideAllOverlays(); Game.newGame(); });
+  click('btnContinue',()=>{ hideAllOverlays(); Game.continueGame(); });
+  click('btnHow',()=>{ hide('title'); HowTo.open(); });
+  click('btnHowBack',()=>{ hide('howto'); show('title'); });
+  click('btnSettings',()=>{ Game.settingsReturn='title'; hide('title'); Settings.open(); });
+  click('btnSettingsBack',()=>{ hide('settings'); Game.settingsOpen=false;
+    show(Game.settingsReturn==='pause'?'pause':'title'); });
+  click('btnResume',()=>togglePause(false));
+  click('btnRestart',()=>{ togglePause(false); Game.hp=Game.maxHp; Flow.retryBattle(); });
+  click('btnMute',()=>{ const m=!Sfx.isMuted(); Sfx.setMuted(m);
+    Game.settings.muted=m?1:0; Game.persistProgress();
+    $('btnMute').textContent=m?'🔇 Unmute':'🔊 Mute'; });
+  click('btnQuit',()=>{ togglePause(false); hideAllOverlays(); Game.state='title';
+    Game.init(); show('title'); });
+  click('btnEndingTitle',()=>{ hide('ending'); Game.state='title'; Game.init(); show('title'); });
+  // settings option buttons
+  const opt=(id,key,fn)=>{
+    $(id).querySelectorAll('button').forEach(b=>{
+      b.classList.toggle('on',+b.dataset.v===Game.settings[key]);
+      b.onclick=()=>{ Sfx.click(); Game.settings[key]=+b.dataset.v;
+        $(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+        if(fn) fn(); Game.persistProgress(); };
+    });
+  };
+  opt('optDiff','difficulty'); opt('optShake','shake'); opt('optText','textSpeed');
+  opt('optMute','muted',()=>Sfx.setMuted(!!Game.settings.muted));
+  // pause settings entry
+  const ps=document.createElement('button'); ps.className='btn'; ps.textContent='⚙ Settings';
+  ps.onclick=()=>{ Sfx.click(); Game.settingsReturn='pause'; $('pause').classList.add('hidden');
+    Settings.open(); };
+  $('pause').querySelector('.panel').insertBefore(ps,$('btnQuit'));
+}
+const Settings={
+  open(){ Game.settingsOpen=true;
+    const opt=(id,key)=>{
+      $(id).querySelectorAll('button').forEach(b=>
+        b.classList.toggle('on',+b.dataset.v===Game.settings[key]));
+    };
+    opt('optDiff','difficulty'); opt('optShake','shake');
+    opt('optText','textSpeed'); opt('optMute','muted');
+    show('settings');
+  }
+};
+const HowTo={
+  word:'magic',pos:0,
+  open(){ this.pos=0; this.render(); show('howto'); $('practiceMsg').textContent=''; },
+  render(){
+    const el=$('practiceWord'); el.innerHTML='';
+    [...this.word].forEach((ch,i)=>{
+      const s=document.createElement('span'); s.textContent=ch;
+      s.className=i<this.pos?'done':(i===this.pos?'cur':'');
+      el.appendChild(s);
+    });
+  },
+  type(ch){
+    if(ch===this.word[this.pos]){ this.pos++; Sfx.key(); this.render();
+      if(this.pos>=this.word.length){
+        $('practiceMsg').textContent='✨ Perfect! That\'s the whole game.';
+        Sfx.combo(10);
+        setTimeout(()=>{ this.pos=0; this.render(); $('practiceMsg').textContent=''; },1200);
+      }
+    }else Sfx.error();
+  }
+};
+// howto practice typing hook
+document.addEventListener('keydown',e=>{
+  if(Game.state==='title'&&!$('howto').classList.contains('hidden')&&e.key.length===1)
+    HowTo.type(e.key.toLowerCase());
+});
+
+/* ---------- 11. Main loop ---------- */
+let lastT=performance.now();
+function loop(now){
+  let dt=(now-lastT)/1000; lastT=now;
+  dt=Math.min(dt,0.05);
+  if(!Game.paused){
+    Game.time+=dt;
+    Shake.update(dt);
+    Dialogue.update(dt);
+    Battle.update(dt);
+  }
+  Renderer.draw(dt);
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 12. Test hooks (headless QA) ---------- */
+window.KC={Game,Battle,Flow,Dialogue,Report,Save,CHAPTERS,WORDS,BOSSES,
+  key(ch){ routeKey({key:ch,preventDefault(){}}); },
+  type(str){ for(const ch of str) this.key(ch); },
+  state(){ return {state:Game.state,chapter:Game.chapter,hp:Game.hp,
+    enemyHp:Battle.enemy?Battle.enemy.hp:null,combo:Battle.combo,
+    wpm:Battle.wpm,acc:Battle.accuracy(),curses:Battle.curses.length}; }
+};
+
+Game.init();
+wireMenus();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
